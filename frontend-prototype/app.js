@@ -161,7 +161,7 @@ function Login({ onLogin, onForgot }) {
           </div>
           {/* Illustration */}
           <div className="lp-illus-wrap">
-            <img src="illustration.png" alt="Grievance illustration"/>
+            <img src="assets/illustration.png" alt="Grievance illustration"/>
           </div>
         </div>        {/* ── RIGHT ── */}
         <div className="lp-right">
