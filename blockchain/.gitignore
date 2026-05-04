@@ -1,0 +1,12 @@
+node_modules
+artifacts
+cache
+typechain
+typechain-types
+coverage
+coverage.json
+*.log
+
+# Hardhat specific
+cache
+artifacts
