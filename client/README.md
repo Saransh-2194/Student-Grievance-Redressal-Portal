@@ -1,4 +1,4 @@
-# Student Grievance Redressal Portal – Frontend
+# Student Grievance Redressal Portal – Client Side
 
 ## Overview
 This is the **frontend (client-side)** of the Student Grievance Redressal Portal.  
