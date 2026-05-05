@@ -72,4 +72,20 @@ contract GrievanceRegistry {
         Complaint memory c = complaints[_hashId];
         return (c.ipfsHash, c.status, c.timestamp, c.isEscalated);
     }
+
+    // ── Multi-Tier Hierarchy Extensions ──
+
+    event EscalationLogged(string indexed hashId, uint8 fromLevel, uint8 toLevel, uint256 timestamp);
+    event ProofSubmitted(string indexed hashId, string proofUrl, uint256 timestamp);
+
+    function logEscalation(string memory _hashId, uint8 _fromLevel, uint8 _toLevel) external onlyOwner {
+        require(complaints[_hashId].exists, "Complaint does not exist");
+        complaints[_hashId].isEscalated = true;
+        emit EscalationLogged(_hashId, _fromLevel, _toLevel, block.timestamp);
+    }
+
+    function submitProofOfWork(string memory _hashId, string memory _proofUrl) external onlyOwner {
+        require(complaints[_hashId].exists, "Complaint does not exist");
+        emit ProofSubmitted(_hashId, _proofUrl, block.timestamp);
+    }
 }

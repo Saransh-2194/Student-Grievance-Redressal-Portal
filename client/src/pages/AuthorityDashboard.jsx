@@ -5,19 +5,38 @@ import EmptyState from '../components/EmptyState';
 import StatsGrid from '../components/StatsGrid';
 import { 
   EyeOff, AlertTriangle, CheckCircle, Shield, 
-  BarChart3, TrendingUp, Users, Clock 
+  BarChart3, TrendingUp, Users, Clock, ClipboardList
 } from 'lucide-react';
 import { API_URL } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../hooks/useSocket';
 
 export default function AuthorityDashboard() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('my_queue'); // 'my_queue' | 'all' | 'personal' | 'escalated' | 'breached'
   const [selectedDept, setSelectedDept] = useState('all');
+  const { user } = useAuth();
+  const socket = useSocket();
 
   useEffect(() => {
     fetchAll();
   }, []);
+
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    socket.emit('join-user', user.id);
+    if (user.departmentId) socket.emit('join-dept', user.departmentId);
+
+    socket.on('ticket-updated', () => fetchAll());
+    socket.on('new-ticket', () => fetchAll());
+
+    return () => {
+      socket.off('ticket-updated');
+      socket.off('new-ticket');
+    };
+  }, [socket, user]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -71,6 +90,7 @@ export default function AuthorityDashboard() {
   ];
 
   let filtered = [...complaints];
+  if (filter === 'my_queue') filtered = filtered.filter(c => c.assignedToId === user?.id && c.status !== 'CLOSED');
   if (filter === 'personal') filtered = filtered.filter(c => c.visibility === 'PERSONAL');
   if (filter === 'escalated') filtered = filtered.filter(c => c.status === 'ESCALATED');
   if (filter === 'breached') filtered = filtered.filter(c => c.slaBreached);
@@ -149,13 +169,14 @@ export default function AuthorityDashboard() {
       }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           {[
-            { key: 'all', label: 'All Cases' },
-            { key: 'personal', label: '🔒 Personal' },
-            { key: 'escalated', label: '⚠ Escalated' },
-            { key: 'breached', label: '🔴 SLA Breached' },
+            { key: 'my_queue', label: 'My Queue', icon: <ClipboardList size={14} /> },
+            { key: 'all', label: 'All Cases', icon: <BarChart3 size={14} /> },
+            { key: 'personal', label: '🔒 Personal', icon: null },
+            { key: 'escalated', label: '⚠ Escalated', icon: null },
+            { key: 'breached', label: '🔴 SLA Breached', icon: null },
           ].map(f => (
             <button key={f.key} className={`btn btn-sm ${filter === f.key ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter(f.key)}>
-              {f.label}
+              {f.icon} {f.label}
             </button>
           ))}
         </div>

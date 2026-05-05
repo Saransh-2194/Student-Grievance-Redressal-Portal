@@ -14,10 +14,14 @@ const abi = [
   "function createComplaint(string memory _hashId, string memory _ipfsHash) external",
   "function updateStatus(string memory _hashId, uint8 _status) external",
   "function escalateComplaint(string memory _hashId) external",
+  "function logEscalation(string memory _hashId, uint8 _fromLevel, uint8 _toLevel) external",
+  "function submitProofOfWork(string memory _hashId, string memory _proofUrl) external",
   "function getComplaint(string memory _hashId) external view returns (string memory, uint8, uint256, bool)",
   "event ComplaintCreated(string indexed hashId, string ipfsHash, uint256 timestamp)",
   "event StatusUpdated(string indexed hashId, uint8 oldStatus, uint8 newStatus, uint256 timestamp)",
-  "event Escalated(string indexed hashId, uint256 timestamp)"
+  "event Escalated(string indexed hashId, uint256 timestamp)",
+  "event EscalationLogged(string indexed hashId, uint8 fromLevel, uint8 toLevel, uint256 timestamp)",
+  "event ProofSubmitted(string indexed hashId, string proofUrl, uint256 timestamp)"
 ];
 
 const contract = new ethers.Contract(contractAddress, abi, wallet);
@@ -51,6 +55,28 @@ export const escalateBlockchainComplaint = async (hashId) => {
     return receipt.hash;
   } catch (error) {
     console.error("Blockchain error:", error);
+    return null;
+  }
+};
+
+export const logBlockchainEscalation = async (hashId, fromLevel, toLevel) => {
+  try {
+    const tx = await contract.logEscalation(hashId, fromLevel, toLevel);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  } catch (error) {
+    console.error("Blockchain escalation log error:", error);
+    return null;
+  }
+};
+
+export const submitBlockchainProof = async (hashId, proofUrl) => {
+  try {
+    const tx = await contract.submitProofOfWork(hashId, proofUrl);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  } catch (error) {
+    console.error("Blockchain proof submission error:", error);
     return null;
   }
 };

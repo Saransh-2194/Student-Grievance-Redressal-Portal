@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-:root {
+:root[data-theme="dark"] {
   --bg-primary: #0a0e1a;
   --bg-secondary: #111827;
   --bg-tertiary: #1a2235;
@@ -15,25 +13,46 @@
   --danger: #ef4444;
   --warning: #f59e0b;
   --success: #10b981;
-  --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  --gradient-accent: linear-gradient(135deg, #06b6d4, #3b82f6);
-  --gradient-danger: linear-gradient(135deg, #ef4444, #f97316);
-  --gradient-success: linear-gradient(135deg, #10b981, #06b6d4);
+  --border-color: rgba(51, 65, 85, 0.4);
   --card-bg: rgba(30, 41, 59, 0.6);
-  --card-border: rgba(255, 255, 255, 0.06);
+  --card-border: rgba(255, 255, 255, 0.05);
   --glass-bg: rgba(17, 24, 39, 0.8);
-  --border-color: rgba(51, 65, 85, 0.6);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+:root[data-theme="light"], :root {
+  --bg-primary: #f4f7fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f8fafc;
+  --surface: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --accent-blue: #0061ff;
+  --accent-violet: #7c3aed;
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --danger: #ff4d4f;
+  --warning: #faad14;
+  --success: #52c41a;
+  --border-color: #e2e8f0;
+  --card-bg: #ffffff;
+  --card-border: #edf2f7;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.04);
+}
+
+:root {
+  --gradient-primary: linear-gradient(135deg, #0061ff, #60efff);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.25);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
   --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
-  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-base: 300ms ease;
+  --transition-slow: 500ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 *, *::before, *::after {
@@ -50,9 +69,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
@@ -175,12 +193,20 @@ select.input-field {
   transition: transform var(--transition-slow), box-shadow var(--transition-slow), border-color var(--transition-base);
 }
 .card:hover {
-  border-color: rgba(255,255,255,0.1);
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-lg);
 }
 .card-interactive:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: rgba(59, 130, 246, 0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  border-color: var(--accent-blue);
+}
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
 }
 .card.expanded {
   transform: scale(1.005);
@@ -213,8 +239,8 @@ select.input-field {
 .badge-resolved { background: rgba(16, 185, 129, 0.15); color: #34d399; }
 .badge-escalated { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
 
-.badge-public { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
-.badge-personal { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.badge-public { background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.2); }
+.badge-personal { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
 
 @keyframes pulse-badge {
   0%, 100% { opacity: 1; }
@@ -621,7 +647,134 @@ select.input-field {
 .btn-text { background: transparent; color: var(--accent-blue); font-size: 0.8rem; font-weight: 600; padding: 4px 8px; border-radius: var(--radius-sm); }
 .btn-text:hover { background: rgba(59, 130, 246, 0.1); }
 
-.empty-notifications { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+/* ── Comprehensive Responsive System ── */
+@media (max-width: 1024px) {
+  .sidebar { 
+    width: 280px; 
+    position: fixed; 
+    left: 0; 
+    top: 0; 
+    bottom: 0; 
+    z-index: 2000; 
+    transform: translateX(-100%); 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--bg-secondary);
+  }
+  
+  .sidebar.mobile-open { 
+    transform: translateX(0); 
+    box-shadow: 20px 0 50px rgba(0,0,0,0.3); 
+  }
+
+  .main-container {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .main-content {
+    padding: 24px 16px !important;
+  }
+
+  .main-header {
+    padding: 0 16px !important;
+  }
+
+  .search-bar { display: none; }
+  .mobile-only { display: flex !important; }
+}
+
+@media (max-width: 768px) {
+  /* Layout Stacking */
+  .stats-grid { 
+    grid-template-columns: 1fr !important; 
+    gap: 16px !important;
+  }
+
+  .glass-panel { 
+    padding: 20px !important; 
+  }
+
+  h1 { font-size: 1.6rem !important; }
+  h2 { font-size: 1.3rem !important; }
+  
+  .user-profile-summary .user-text { display: none; }
+
+  /* Grid System Stacking */
+  [style*="display: grid"] {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  [style*="display: flex"] {
+    flex-wrap: wrap;
+  }
+
+  /* Complaint Card Overhaul */
+  .complaint-card {
+    flex-direction: column !important;
+    padding: 16px !important;
+    gap: 16px !important;
+  }
+
+  .score-box {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    padding-right: 0 !important;
+    padding-bottom: 12px !important;
+    width: 100% !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .complaint-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .complaint-footer {
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .complaint-footer .btn {
+    width: 100% !important;
+    padding: 12px !important;
+  }
+
+  /* New Complaint Form */
+  form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 24px !important;
+  }
+
+  /* Modal Responsiveness */
+  .modal-content {
+    width: 95% !important;
+    padding: 24px !important;
+    margin: 5vh auto !important;
+    max-height: 90vh !important;
+  }
+
+  /* Support and Documentation */
+  .support-grid, .documentation-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sticky-sidebar {
+    position: relative !important;
+    top: 0 !important;
+    margin-bottom: 24px !important;
+    width: 100% !important;
+  }
+}
+
+.mobile-only { display: none; }
+.nav-item.active { background: rgba(59, 130, 246, 0.1) !important; color: var(--accent-blue) !important; font-weight: 700 !important; }
+.nav-item:hover { background: rgba(255,255,255,0.04); }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
@@ -632,3 +785,29 @@ select.input-field {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .notification-dropdown { width: 300px; right: -60px; }
 }
+
+/* Responsive Utilities */
+@media (max-width: 1024px) {
+  .sidebar { width: 0; transform: translateX(-100%); position: fixed; z-index: 1001; transition: transform 0.3s ease; }
+  .sidebar.mobile-open { width: 280px; transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.1); }
+  .main-content { margin-left: 0 !important; padding: 20px !important; }
+  .main-header { padding: 0 20px !important; }
+  .search-bar { display: none; }
+}
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: 1fr !important; }
+  .glass-panel { padding: 16px !important; }
+  h1 { font-size: 1.5rem !important; }
+  .user-profile-summary .user-text { display: none; }
+  .complaint-card { flex-direction: column !important; }
+  .complaint-detail-grid { grid-template-columns: 1fr !important; }
+}
+
+.mobile-only { display: none; }
+@media (max-width: 1024px) {
+  .mobile-only { display: flex !important; }
+}
+
+.nav-item.active { background: rgba(0,97,255,0.08) !important; color: var(--accent-blue) !important; font-weight: 700 !important; }
+.nav-item:hover { background: var(--bg-primary); }
+

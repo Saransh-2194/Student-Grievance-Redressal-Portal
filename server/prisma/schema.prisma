@@ -47,6 +47,7 @@ model User {
   email           String           @unique
   passwordHash    String
   role            Role             @default(STUDENT)
+  designation     String?          // e.g., "Caretaker", "Warden", "Vice Chancellor"
   departmentId    String?
   department      Department?      @relation(fields: [departmentId], references: [id])
   complaints      Complaint[]      @relation("UserComplaints")
@@ -92,6 +93,11 @@ model Complaint {
   respondedAt     DateTime?
   resolvedAt      DateTime?
   
+  // Hierarchy Tracking (Array-Index Escalation)
+  currentChainIndex  Int          @default(0)
+  escalationChain    String?      // JSON array of user IDs, e.g. '["uid1","uid2","uid3"]'
+  isEscalated        Boolean      @default(false)
+  
   // Artifacts
   ipfsHash        String?
   attachmentUrl   String?
@@ -102,6 +108,7 @@ model Complaint {
   votes           Vote[]
   comments        Comment[]
   activityLogs    ActivityLog[]
+  escalationLogs  EscalationLog[]
   feedback        Feedback?
   
   createdAt       DateTime        @default(now())
@@ -162,4 +169,17 @@ model Notification {
   link      String?  
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model EscalationLog {
+  id            String    @id @default(cuid())
+  complaintId   String
+  complaint     Complaint @relation(fields: [complaintId], references: [id])
+  fromIndex     Int
+  toIndex       Int
+  fromAuthority String?   // User email or ID
+  toAuthority   String?   // User email or ID
+  reason        String    // "SLA_BREACH" | "MANUAL" | "HIGH_IMPACT"
+  txHash        String?   // Blockchain tx hash for this escalation
+  timestamp     DateTime  @default(now())
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, Shield, ArrowRight, UserPlus } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { Lock, Mail, Shield, ArrowRight, UserPlus, Sun, Moon } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../lib/api';
 
@@ -15,6 +16,7 @@ export default function Login() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -54,38 +56,60 @@ export default function Login() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'radial-gradient(ellipse at 30% 20%, rgba(59,130,246,0.08) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.06) 0%, transparent 50%), var(--bg-primary)'
+      background: 'var(--bg-primary)',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      <div style={{ width: '100%', maxWidth: '420px', padding: '0 20px' }}>
+      {/* Cinematic Background Elements */}
+      <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%', background: 'radial-gradient(circle, var(--accent-blue) 0%, transparent 70%)', opacity: 0.1, filter: 'blur(100px)' }} />
+      <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: 'radial-gradient(circle, var(--accent-violet) 0%, transparent 70%)', opacity: 0.08, filter: 'blur(100px)' }} />
+
+      <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+        <button 
+          className="btn-icon btn-ghost" 
+          onClick={toggleTheme}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border-color)', width: '44px', height: '44px', borderRadius: '12px' }}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
+
+      <div style={{ width: '100%', maxWidth: '440px', padding: '0 20px', position: 'relative', zIndex: 1 }}>
         {/* Branding */}
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 'var(--radius-lg)',
+            width: 64, height: 64, borderRadius: 'var(--radius-xl)',
             background: 'var(--gradient-primary)', display: 'inline-flex',
-            alignItems: 'center', justifyContent: 'center', marginBottom: '16px',
-            boxShadow: '0 4px 24px rgba(59,130,246,0.3)'
+            alignItems: 'center', justifyContent: 'center', marginBottom: '20px',
+            boxShadow: '0 8px 32px rgba(59,130,246,0.4)',
+            transform: 'rotate(-5deg)'
           }}>
-            <Shield size={28} color="white" />
+            <Shield size={32} color="white" />
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '4px' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '8px', letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
             Grievance Portal
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Blockchain-backed transparency & accountability
+          <p style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: 500 }}>
+            Unified University Resolution Engine
           </p>
         </div>
 
         {/* Card */}
-        <div className="card" style={{ padding: '32px' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '24px' }}>
-            {isRegister ? 'Create Account' : 'Sign In'}
-          </h2>
+        <div className="glass-panel" style={{ padding: '40px', background: 'var(--surface)', boxShadow: 'var(--shadow-lg)' }}>
+          <div style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px' }}>
+              {isRegister ? 'Join the Portal' : 'Welcome Back'}
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              {isRegister ? 'Create your account to start reporting issues.' : 'Access your dashboard and track your tickets.'}
+            </p>
+          </div>
 
           {error && (
             <div style={{
               background: 'rgba(239,68,68,0.1)', color: 'var(--danger)',
-              padding: '10px 14px', borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem', marginBottom: '16px'
+              padding: '12px 16px', borderRadius: 'var(--radius-md)',
+              fontSize: '0.85rem', marginBottom: '24px', border: '1px solid rgba(239,68,68,0.2)'
             }}>
               {error}
             </div>
@@ -94,23 +118,23 @@ export default function Login() {
           {success && (
             <div style={{
               background: 'rgba(16,185,129,0.1)', color: 'var(--success)',
-              padding: '10px 14px', borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem', marginBottom: '16px'
+              padding: '12px 16px', borderRadius: 'var(--radius-md)',
+              fontSize: '0.85rem', marginBottom: '24px', border: '1px solid rgba(16,185,129,0.2)'
             }}>
               {success}
             </div>
           )}
 
-          <form onSubmit={isRegister ? handleRegister : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <form onSubmit={isRegister ? handleRegister : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
-              <label className="label">Email</label>
+              <label className="label" style={{ fontSize: '0.7rem' }}>Institutional Email</label>
               <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: '14px', top: '13px', color: 'var(--text-muted)' }} />
+                <Mail size={18} style={{ position: 'absolute', left: '16px', top: '15px', color: 'var(--text-muted)' }} />
                 <input
                   type="email"
                   className="input-field"
-                  style={{ paddingLeft: '40px' }}
-                  placeholder="you@university.edu"
+                  style={{ paddingLeft: '48px', height: '48px', background: 'var(--bg-primary)' }}
+                  placeholder="name@university.edu"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
@@ -119,13 +143,13 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <label className="label" style={{ fontSize: '0.7rem' }}>Secret Password</label>
               <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '14px', top: '13px', color: 'var(--text-muted)' }} />
+                <Lock size={18} style={{ position: 'absolute', left: '16px', top: '15px', color: 'var(--text-muted)' }} />
                 <input
                   type="password"
                   className="input-field"
-                  style={{ paddingLeft: '40px' }}
+                  style={{ paddingLeft: '48px', height: '48px', background: 'var(--bg-primary)' }}
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -136,51 +160,56 @@ export default function Login() {
             </div>
 
             {isRegister && (
-              <>
+              <div style={{ display: 'grid', gridTemplateColumns: role === 'ADMIN' ? '1fr 1.2fr' : '1fr', gap: '12px' }}>
                 <div>
-                  <label className="label">Role</label>
-                  <select className="input-field" value={role} onChange={e => setRole(e.target.value)}>
+                  <label className="label" style={{ fontSize: '0.7rem' }}>Your Role</label>
+                  <select className="input-field" style={{ height: '48px', background: 'var(--bg-primary)' }} value={role} onChange={e => setRole(e.target.value)}>
                     <option value="STUDENT">Student</option>
-                    <option value="ADMIN">Department Admin</option>
-                    <option value="AUTHORITY">Higher Authority</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="AUTHORITY">Authority</option>
                   </select>
                 </div>
 
                 {role === 'ADMIN' && (
                   <div>
-                    <label className="label">Department</label>
-                    <select className="input-field" value={departmentName} onChange={e => setDepartmentName(e.target.value)}>
+                    <label className="label" style={{ fontSize: '0.7rem' }}>Department</label>
+                    <select className="input-field" style={{ height: '48px', background: 'var(--bg-primary)' }} value={departmentName} onChange={e => setDepartmentName(e.target.value)}>
                       <option value="Registrar">Registrar</option>
-                      <option value="Dean of Academics">Dean of Academics</option>
-                      <option value="Dean of Student Affairs">Dean of Student Affairs</option>
-                      <option value="Senior Doctor">Senior Doctor</option>
-                      <option value="Chief Warden">Chief Warden</option>
+                      <option value="Dean of Academics">Academics</option>
+                      <option value="Dean of Student Affairs">Student Affairs</option>
+                      <option value="Senior Doctor">Health Center</option>
+                      <option value="Chief Warden">Hostels</option>
                     </select>
                   </div>
                 )}
-              </>
+              </div>
             )}
 
-            <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ marginTop: '8px', opacity: loading ? 0.7 : 1 }}>
-              {loading ? (isRegister ? 'Creating...' : 'Signing in...') : (
+            <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ marginTop: '12px', height: '52px', fontSize: '1rem', background: 'var(--gradient-primary)' }}>
+              {loading ? (isRegister ? 'Initializing...' : 'Authenticating...') : (
                 <>
-                  {isRegister ? <><UserPlus size={18} /> Create Account</> : <><ArrowRight size={18} /> Sign In</>}
+                  {isRegister ? <><UserPlus size={20} /> Create Account</> : <><ArrowRight size={20} /> Sign In to Portal</>}
                 </>
               )}
             </button>
           </form>
 
-          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+          <div style={{ textAlign: 'center', marginTop: '32px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            {isRegister ? 'Already have an account?' : "New to the portal?"}{' '}
             <button
-              style={{ background: 'none', color: 'var(--accent-blue)', fontWeight: 600, fontSize: '0.85rem' }}
+              style={{ background: 'none', color: 'var(--accent-blue)', fontWeight: 700, fontSize: '0.9rem' }}
               onClick={() => { setIsRegister(!isRegister); setError(''); setSuccess(''); }}
             >
-              {isRegister ? 'Sign In' : 'Register'}
+              {isRegister ? 'Sign In' : 'Register Now'}
             </button>
           </div>
         </div>
+        
+        <p style={{ textAlign: 'center', marginTop: '32px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+          Secure Blockchain-Backbone | University Internal Use Only
+        </p>
       </div>
     </div>
   );
 }
+

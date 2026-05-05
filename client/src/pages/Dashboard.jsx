@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
@@ -8,16 +9,26 @@ import AdminDashboard from './AdminDashboard';
 import AuthorityDashboard from './AuthorityDashboard';
 import EscalatedView from './EscalatedView';
 import AuditLog from './AuditLog';
+import Profile from './Profile';
+import Settings from './Settings';
+import Support from './Support';
+import Notifications from './Notifications';
+import Documentation from './Documentation';
 import Header from '../components/Header';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="page-layout">
-      <Sidebar />
+    <div className={`page-layout ${isSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
+      <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
       <div className="main-container">
-        <Header />
+        <Header isOpen={isSidebarOpen} onToggle={toggleSidebar} />
         <div className="main-content">
           <Routes>
             <Route index element={<PublicDashboard />} />
@@ -43,6 +54,12 @@ export default function Dashboard() {
                 <Route path="audit" element={<AuditLog />} />
               </>
             )}
+
+            <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="support" element={<Support />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="documentation" element={<Documentation />} />
 
             <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>

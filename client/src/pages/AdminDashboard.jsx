@@ -109,15 +109,66 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1>Service Desk Backlog</h1>
-          <p>Manage department tickets, enforce SLAs, and resolve student grievances.</p>
+      {/* Status wise Summary */}
+      <div style={{ marginBottom: '32px' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '16px', textTransform: 'none' }}>Status wise Summary</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          
+          <div className="glass-panel" style={{ 
+            padding: '20px 24px', 
+            background: 'rgba(255, 192, 203, 0.2)', 
+            border: 'none', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderRadius: '12px'
+          }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#d63384' }}>Open</span>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#d63384' }}>{complaints.filter(c => c.status === 'CREATED').length}</span>
+          </div>
+
+          <div className="glass-panel" style={{ 
+            padding: '20px 24px', 
+            background: 'rgba(139, 92, 246, 0.1)', 
+            border: 'none', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderRadius: '12px'
+          }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--accent-violet)' }}>In progress</span>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-violet)' }}>{complaints.filter(c => c.status === 'IN_PROGRESS').length}</span>
+          </div>
+
+          <div className="glass-panel" style={{ 
+            padding: '20px 24px', 
+            background: 'rgba(16, 185, 129, 0.1)', 
+            border: 'none', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            borderRadius: '12px'
+          }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--success)' }}>Resolved</span>
+            <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--success)' }}>{complaints.filter(c => c.status === 'RESOLVED' || c.status === 'CLOSED').length}</span>
+          </div>
+
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={handleQueueRefresh}><ArrowUpDown size={14} /> Refresh Queue</button>
       </div>
 
-      <StatsGrid stats={stats} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+        {stats.map((s, i) => (
+          <div key={i} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-secondary)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color }}>
+              {s.icon}
+            </div>
+            <div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{s.value}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Jira-style Toolbar */}
       <div style={{ 
@@ -135,7 +186,7 @@ export default function AdminDashboard() {
             { key: 'my_queue', label: 'My Queue' },
             { key: 'unassigned', label: 'Unassigned' },
             { key: 'escalated', label: 'Escalated' },
-            { key: 'archive', label: 'Ticket Archive' },
+            { key: 'archive', label: 'Department Backlog' },
           ].map(v => (
             <button 
               key={v.key} 

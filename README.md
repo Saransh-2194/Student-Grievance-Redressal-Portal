@@ -119,7 +119,12 @@ npm run dev
 │       │   ├── AdminDashboard.jsx    # Admin: department queue
 │       │   ├── AuthorityDashboard.jsx # Authority: all + personal
 │       │   ├── EscalatedView.jsx     # Authority: escalated only
-│       │   └── AuditLog.jsx          # Authority: audit trail table
+│       │   ├── AuditLog.jsx          # Authority: audit trail table
+│       │   ├── Profile.jsx           # User identity & stats
+│       │   ├── Settings.jsx          # Theme & Security management
+│       │   ├── Support.jsx           # FAQ & Help center
+│       │   ├── Notifications.jsx     # Full-page alert history
+│       │   └── Documentation.jsx     # Portal usage & policy guide
 │       └── styles/
 │           └── global.css           # Design system (glassmorphism)
 │

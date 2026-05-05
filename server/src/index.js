@@ -1,3 +1,4 @@
+// Grievance Redressal Server - Main Entry Point
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -17,8 +18,22 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 // ── Security Middleware ──
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -27,7 +42,7 @@ app.use(express.json({ limit: '5mb' }));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000, // Increased for dev/testing
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
@@ -76,7 +91,7 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start ──
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3300;
 httpServer.listen(PORT, () => {
   console.log(`\n🚀 Server running on http://localhost:${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);

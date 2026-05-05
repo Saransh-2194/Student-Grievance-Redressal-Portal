@@ -3,11 +3,12 @@ import crypto from 'crypto';
 import prisma from '../lib/db.js';
 import { verifyToken, requireRole } from '../middlewares/auth.js';
 import { validateComplaint, validateVote, validateStatusUpdate } from '../middlewares/validate.js';
-import { createBlockchainComplaint, updateBlockchainStatus } from '../lib/blockchain.js';
+import { createBlockchainComplaint, updateBlockchainStatus, logBlockchainEscalation } from '../lib/blockchain.js';
 import { canTransition, getWorkflowError } from '../lib/workflow.js';
 import { calculateSlaDeadline, isSlaBreached } from '../lib/sla.js';
 import { getIo } from '../lib/socket.js';
 import { notifyStatusChange, notifyAssignment, createNotification } from '../lib/notifications.js';
+import { buildChainForTicket, getNextInChain, isTerminal, getChainWithPositions } from '../lib/hierarchy.js';
 import multer from 'multer';
 import multerS3 from 'multer-s3';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
@@ -63,6 +64,34 @@ const getSignedAttachmentUrl = async (url) => {
   }
 };
 
+/**
+ * Helper to transform a complaint object:
+ * 1. Calculates impact score
+ * 2. Signs S3 attachmentUrl if present
+ * 3. Signs S3 resolutionProof if present
+ */
+const transformComplaint = async (c) => {
+  let up = 0; let down = 0;
+  if (c.votes) {
+    c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
+  }
+  const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[c.severity] || 1;
+  const score = (up - down) * weight;
+  
+  const signedAttachmentUrl = await getSignedAttachmentUrl(c.attachmentUrl);
+  const signedResolutionProof = await getSignedAttachmentUrl(c.resolutionProof);
+
+  return { 
+    ...c, 
+    impactScore: score, 
+    upvotes: up, 
+    downvotes: down, 
+    attachmentUrl: signedAttachmentUrl,
+    resolutionProof: signedResolutionProof,
+    votes: undefined 
+  };
+};
+
 // ──────────────────────────────────────────────
 // GET /complaints/public — Public complaints sorted by impact score
 // ──────────────────────────────────────────────
@@ -80,23 +109,7 @@ router.get('/public', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(async (c) => {
-      let up = 0; let down = 0;
-      c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
-      const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[c.severity] || 1;
-      const score = (up - down) * weight;
-      
-      const signedUrl = await getSignedAttachmentUrl(c.attachmentUrl);
-
-      return { 
-        ...c, 
-        impactScore: score, 
-        upvotes: up, 
-        downvotes: down, 
-        attachmentUrl: signedUrl,
-        votes: undefined 
-      };
-    }));
+    const scored = await Promise.all(complaints.map(transformComplaint));
 
     scored.sort((a, b) => b.impactScore - a.impactScore);
     res.json(scored);
@@ -128,21 +141,7 @@ router.get('/escalated', verifyToken, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(async (c) => {
-      let up = 0; let down = 0;
-      c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
-      const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[c.severity] || 1;
-      
-      const signedUrl = await getSignedAttachmentUrl(c.attachmentUrl);
-      return { 
-        ...c, 
-        impactScore: (up - down) * weight, 
-        upvotes: up, 
-        downvotes: down, 
-        attachmentUrl: signedUrl,
-        votes: undefined 
-      };
-    }));
+    const scored = await Promise.all(complaints.map(transformComplaint));
 
     res.json(scored);
   } catch (err) {
@@ -168,21 +167,7 @@ router.get('/mine', verifyToken, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(async (c) => {
-      let up = 0; let down = 0;
-      c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
-      const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[c.severity] || 1;
-      
-      const signedUrl = await getSignedAttachmentUrl(c.attachmentUrl);
-      return { 
-        ...c, 
-        impactScore: (up - down) * weight, 
-        upvotes: up, 
-        downvotes: down, 
-        attachmentUrl: signedUrl,
-        votes: undefined 
-      };
-    }));
+    const scored = await Promise.all(complaints.map(transformComplaint));
 
     res.json(scored);
   } catch (err) {
@@ -215,21 +200,7 @@ router.get('/department', verifyToken, requireRole(['ADMIN']), async (req, res) 
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(async (c) => {
-      let up = 0; let down = 0;
-      c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
-      const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[c.severity] || 1;
-      
-      const signedUrl = await getSignedAttachmentUrl(c.attachmentUrl);
-      return { 
-        ...c, 
-        impactScore: (up - down) * weight, 
-        upvotes: up, 
-        downvotes: down, 
-        attachmentUrl: signedUrl,
-        votes: undefined 
-      };
-    }));
+    const scored = await Promise.all(complaints.map(transformComplaint));
 
     res.json(scored);
   } catch (err) {
@@ -254,21 +225,7 @@ router.get('/all', verifyToken, requireRole(['AUTHORITY']), async (req, res) => 
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(async (c) => {
-      let up = 0; let down = 0;
-      c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
-      const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[c.severity] || 1;
-      
-      const signedUrl = await getSignedAttachmentUrl(c.attachmentUrl);
-      return { 
-        ...c, 
-        impactScore: (up - down) * weight, 
-        upvotes: up, 
-        downvotes: down, 
-        attachmentUrl: signedUrl,
-        votes: undefined 
-      };
-    }));
+    const scored = await Promise.all(complaints.map(transformComplaint));
 
     res.json(scored);
   } catch (err) {
@@ -317,6 +274,9 @@ router.post('/', verifyToken, upload.single('attachment'), validateComplaint, as
     // Personal complaints bypass department routing
     const assignedDeptId = visibility === 'PERSONAL' ? null : dept.id;
 
+    // ── Hierarchy Chain Resolution ──
+    const { chain, firstAuthority } = await buildChainForTicket(category);
+
     const complaint = await prisma.complaint.create({
       data: {
         hashId,
@@ -325,12 +285,16 @@ router.post('/', verifyToken, upload.single('attachment'), validateComplaint, as
         category,
         severity,
         visibility,
-        status: 'CREATED',
+        status: firstAuthority ? 'ASSIGNED' : 'CREATED',
         ipfsHash: mockIpfsHash,
         attachmentUrl,
         userId: req.user.id,
         departmentId: assignedDeptId,
-        slaDeadline: calculateSlaDeadline(severity)
+        slaDeadline: calculateSlaDeadline(severity),
+        // Hierarchy fields
+        escalationChain: JSON.stringify(chain),
+        currentChainIndex: 0,
+        assignedToId: firstAuthority
       }
     });
 
@@ -349,18 +313,81 @@ router.post('/', verifyToken, upload.single('attachment'), validateComplaint, as
       data: {
         complaintId: complaint.id,
         action: 'TICKET_CREATED',
-        details: `Ticket created with severity ${severity}`,
+        details: `Ticket created with severity ${severity}. Auto-assigned to chain[0].`,
         userId: req.user.id
       }
     });
 
-    // Notify department staff
+    // Notify assigned authority via their user room
+    if (firstAuthority) {
+      getIo().to(`user-${firstAuthority}`).emit('new-ticket', complaint);
+      const assignedUser = await prisma.user.findUnique({ where: { id: firstAuthority } });
+      if (assignedUser) {
+        createNotification(firstAuthority, 'INFO', `New ticket assigned to you: "${title}"`, '/dashboard/admin').catch(console.error);
+      }
+    }
+
+    // Also notify department room for visibility
     if (assignedDeptId) {
-      console.log(`[Socket] Emitting new-ticket to dept-${assignedDeptId}`);
       getIo().to(`dept-${assignedDeptId}`).emit('new-ticket', complaint);
     }
 
     res.status(201).json(complaint);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ──────────────────────────────────────────────
+// GET /complaints/:id/chain — Get hierarchy chain with positions for UI
+// ──────────────────────────────────────────────
+router.get('/:id/chain', verifyToken, async (req, res) => {
+  try {
+    const complaint = await prisma.complaint.findUnique({
+      where: { id: req.params.id },
+      select: { escalationChain: true, currentChainIndex: true, category: true }
+    });
+
+    if (!complaint) return res.status(404).json({ error: "Not found" });
+
+    if (!complaint.escalationChain) {
+      return res.json({ chain: [], currentIndex: 0 });
+    }
+
+    const positions = await getChainWithPositions(complaint.escalationChain, complaint.currentChainIndex);
+    
+    // Also fetch escalation logs for this ticket
+    const escalationLogs = await prisma.escalationLog.findMany({
+      where: { complaintId: req.params.id },
+      orderBy: { timestamp: 'asc' }
+    });
+
+    res.json({ 
+      chain: positions, 
+      currentIndex: complaint.currentChainIndex,
+      category: complaint.category,
+      escalationLogs 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ──────────────────────────────────────────────
+// GET /complaints/:id/timeline — Full audit trail
+// ──────────────────────────────────────────────
+router.get('/:id/timeline', verifyToken, async (req, res) => {
+  try {
+    const logs = await prisma.activityLog.findMany({
+      where: { complaintId: req.params.id },
+      orderBy: { timestamp: 'asc' },
+      include: { 
+        complaint: { select: { title: true, hashId: true } }
+      }
+    });
+    res.json(logs);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -511,13 +538,24 @@ router.put('/:id/status', verifyToken, upload.single('proof'), async (req, res) 
     }
 
     // 5. Real-time & Notifications
-    console.log(`[Socket] Emitting status-updated to ticket-${complaintId} and dept-${complaint.departmentId}`);
     getIo().to(`ticket-${complaintId}`).emit('status-updated', { ticketId: complaintId, status });
     getIo().to(`dept-${complaint.departmentId}`).emit('ticket-updated', { ticketId: complaintId, status });
+    // Notify the student's personal room
+    getIo().to(`user-${complaint.userId}`).emit('ticket-updated', { ticketId: complaintId, status });
+    // Notify the assigned admin's personal room (critical for reopen visibility)
+    if (complaint.assignedToId) {
+      getIo().to(`user-${complaint.assignedToId}`).emit('ticket-updated', { ticketId: complaintId, status });
+    }
     
-    const student = await prisma.user.findUnique({ where: { id: complaint.userId } });
-    if (student) {
-      notifyStatusChange(student.id, student.email, complaint.title, oldStatus, status).catch(console.error);
+    // Notifications: admin actions → notify student; student actions → notify admin
+    if (userRole === 'ADMIN' || userRole === 'AUTHORITY') {
+      const student = await prisma.user.findUnique({ where: { id: complaint.userId } });
+      if (student) {
+        notifyStatusChange(student.id, student.email, complaint.title, oldStatus, status).catch(console.error);
+      }
+    } else if (userRole === 'STUDENT' && status === 'IN_PROGRESS' && complaint.assignedToId) {
+      // Student reopened — notify the admin
+      createNotification(complaint.assignedToId, 'WARNING', `Ticket "${complaint.title}" was reopened by student.`, '/dashboard/admin').catch(console.error);
     }
 
     res.json(updated);
@@ -625,21 +663,96 @@ router.post('/:id/comment', verifyToken, upload.single('attachment'), async (req
   }
 });
 
-// GET /complaints/:id/timeline — Full audit trail
-router.get('/:id/timeline', verifyToken, async (req, res) => {
+
+
+// ──────────────────────────────────────────────
+// POST /complaints/:id/escalate — Manual escalation (Array-Index approach)
+// ──────────────────────────────────────────────
+router.post('/:id/escalate', verifyToken, requireRole(['ADMIN', 'AUTHORITY']), async (req, res) => {
+  const complaintId = req.params.id;
+
   try {
-    const logs = await prisma.activityLog.findMany({
-      where: { complaintId: req.params.id },
-      orderBy: { timestamp: 'asc' },
-      include: { 
-        complaint: { select: { title: true, hashId: true } }
+    const complaint = await prisma.complaint.findUnique({ where: { id: complaintId } });
+    if (!complaint) return res.status(404).json({ error: "Ticket not found" });
+
+    if (!complaint.escalationChain) {
+      return res.status(400).json({ error: "No escalation chain configured for this ticket." });
+    }
+
+    const chain = JSON.parse(complaint.escalationChain);
+    const currentIndex = complaint.currentChainIndex;
+
+    // Check if at terminal authority
+    if (isTerminal(chain, currentIndex)) {
+      return res.status(400).json({ error: "Ticket is already at the highest authority level. Cannot escalate further." });
+    }
+
+    const nextIndex = currentIndex + 1;
+    const nextAuthorityId = chain[nextIndex];
+
+    // Update the ticket
+    const updated = await prisma.complaint.update({
+      where: { id: complaintId },
+      data: {
+        currentChainIndex: nextIndex,
+        assignedToId: nextAuthorityId,
+        status: 'ESCALATED',
+        isEscalated: true
       }
     });
-    res.json(logs);
+
+    // Create escalation log
+    await prisma.escalationLog.create({
+      data: {
+        complaintId,
+        fromIndex: currentIndex,
+        toIndex: nextIndex,
+        fromAuthority: complaint.assignedToId,
+        toAuthority: nextAuthorityId,
+        reason: 'MANUAL'
+      }
+    });
+
+    // Activity log
+    const nextUser = await prisma.user.findUnique({ where: { id: nextAuthorityId }, select: { email: true, designation: true } });
+    await prisma.activityLog.create({
+      data: {
+        complaintId,
+        action: 'ESCALATION',
+        oldValue: `Level ${currentIndex}`,
+        newValue: `Level ${nextIndex}`,
+        details: `Manually escalated to ${nextUser?.designation || nextUser?.email || 'Next Authority'}`,
+        userId: req.user.id
+      }
+    });
+
+    // Blockchain sync
+    try {
+      if (complaint.hashId) {
+        await logBlockchainEscalation("0x" + complaint.hashId, currentIndex, nextIndex);
+      }
+    } catch (bcErr) {
+      console.warn(`[BC-Sync-Skip] Escalation chain log failed for ticket ${complaintId}`);
+    }
+
+    // Real-time notifications
+    getIo().to(`ticket-${complaintId}`).emit('status-updated', { ticketId: complaintId, status: 'ESCALATED' });
+    getIo().to(`user-${complaint.assignedToId}`).emit('ticket-updated', { ticketId: complaintId, status: 'ESCALATED' });
+    getIo().to(`user-${nextAuthorityId}`).emit('new-ticket', updated);
+    getIo().to(`user-${complaint.userId}`).emit('ticket-updated', { ticketId: complaintId, status: 'ESCALATED' });
+
+    // Notify the new authority
+    createNotification(nextAuthorityId, 'WARNING', `Escalated ticket assigned to you: "${complaint.title}"`, '/dashboard/admin').catch(console.error);
+    // Notify the student
+    createNotification(complaint.userId, 'INFO', `Your ticket "${complaint.title}" has been escalated to a higher authority.`, '/dashboard/my').catch(console.error);
+
+    res.json(updated);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
 
 export default router;

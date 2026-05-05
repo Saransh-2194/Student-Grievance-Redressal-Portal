@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/db.js';
 import { validateRegister, validateLogin } from '../middlewares/validate.js';
+import { verifyToken } from '../middlewares/auth.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-for-jwt';
@@ -71,6 +72,27 @@ router.post('/login', validateLogin, async (req, res) => {
 
     res.json({ token, user: userData });
   } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get('/staff', verifyToken, async (req, res) => {
+  try {
+    const staff = await prisma.user.findMany({
+      where: {
+        role: { in: ['ADMIN', 'AUTHORITY'] }
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        designation: true
+      },
+      orderBy: { designation: 'asc' }
+    });
+    res.json(staff);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
