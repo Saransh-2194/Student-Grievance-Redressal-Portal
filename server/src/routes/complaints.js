@@ -70,7 +70,7 @@ const getSignedAttachmentUrl = async (url) => {
  * 2. Signs S3 attachmentUrl if present
  * 3. Signs S3 resolutionProof if present
  */
-const transformComplaint = async (c) => {
+const transformComplaint = async (c, currentUserId = null, requesterRole = null) => {
   let up = 0; let down = 0;
   if (c.votes) {
     c.votes.forEach(v => v.type === 'UP' ? up++ : down++);
@@ -88,6 +88,19 @@ const transformComplaint = async (c) => {
     downvotes: down, 
     attachmentUrl: signedAttachmentUrl,
     resolutionProof: signedResolutionProof,
+    // Only mask identity for other students or non-admins
+    user: (c.isAnonymous && requesterRole !== 'ADMIN' && requesterRole !== 'SUPER_ADMIN') 
+      ? { email: 'Anonymous student', role: 'STUDENT', name: 'Anonymous', rollNo: 'HIDDEN' } 
+      : c.user,
+    // Mask comment authors if they are the original student on an anonymous ticket
+    comments: c.comments?.map(com => ({
+      ...com,
+      user: (c.isAnonymous && com.userId === c.userId && requesterRole !== 'ADMIN' && requesterRole !== 'SUPER_ADMIN') 
+        ? { email: 'Anonymous student', role: 'STUDENT', name: 'Anonymous' } 
+        : com.user
+    })),
+    isOwner: c.userId === currentUserId,
+    userId: undefined, // Hide real userId from client
     votes: undefined 
   };
 };
@@ -102,14 +115,15 @@ router.get('/public', async (req, res) => {
       include: {
         votes: true,
         department: true,
-        assignedTo: { select: { email: true, role: true } },
-        comments: { include: { user: { select: { email: true, role: true } } } },
+        user: { select: { email: true, role: true, name: true, rollNo: true } },
+        assignedTo: { select: { email: true, role: true, name: true, designation: true } },
+        comments: { include: { user: { select: { email: true, role: true, name: true } } } },
         activityLogs: { orderBy: { timestamp: 'desc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(transformComplaint));
+    const scored = await Promise.all(complaints.map(c => transformComplaint(c)));
 
     scored.sort((a, b) => b.impactScore - a.impactScore);
     res.json(scored);
@@ -134,14 +148,15 @@ router.get('/escalated', verifyToken, async (req, res) => {
       include: {
         votes: true,
         department: true,
-        assignedTo: { select: { email: true, role: true } },
-        comments: { include: { user: { select: { email: true, role: true } } } },
+        user: { select: { email: true, role: true, name: true, rollNo: true } },
+        assignedTo: { select: { email: true, role: true, name: true, designation: true } },
+        comments: { include: { user: { select: { email: true, role: true, name: true } } } },
         activityLogs: { orderBy: { timestamp: 'desc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(transformComplaint));
+    const scored = await Promise.all(complaints.map(c => transformComplaint(c, req.user?.id, req.user?.role)));
 
     res.json(scored);
   } catch (err) {
@@ -160,14 +175,15 @@ router.get('/mine', verifyToken, async (req, res) => {
       include: {
         votes: true,
         department: true,
-        assignedTo: { select: { email: true, role: true } },
-        comments: { include: { user: { select: { email: true, role: true } } } },
+        user: { select: { email: true, role: true, name: true, rollNo: true } },
+        assignedTo: { select: { email: true, role: true, name: true, designation: true } },
+        comments: { include: { user: { select: { email: true, role: true, name: true } } } },
         activityLogs: { orderBy: { timestamp: 'desc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(transformComplaint));
+    const scored = await Promise.all(complaints.map(c => transformComplaint(c, req.user?.id, req.user?.role)));
 
     res.json(scored);
   } catch (err) {
@@ -193,14 +209,15 @@ router.get('/department', verifyToken, requireRole(['ADMIN']), async (req, res) 
       include: {
         votes: true,
         department: true,
-        assignedTo: { select: { email: true, role: true } },
-        comments: { include: { user: { select: { email: true, role: true } } } },
+        user: { select: { email: true, role: true, name: true, rollNo: true } },
+        assignedTo: { select: { email: true, role: true, name: true, designation: true } },
+        comments: { include: { user: { select: { email: true, role: true, name: true } } } },
         activityLogs: { orderBy: { timestamp: 'desc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(transformComplaint));
+    const scored = await Promise.all(complaints.map(c => transformComplaint(c, req.user?.id, req.user?.role)));
 
     res.json(scored);
   } catch (err) {
@@ -212,20 +229,21 @@ router.get('/department', verifyToken, requireRole(['ADMIN']), async (req, res) 
 // ──────────────────────────────────────────────
 // GET /complaints/all — Authority sees everything
 // ──────────────────────────────────────────────
-router.get('/all', verifyToken, requireRole(['AUTHORITY']), async (req, res) => {
+router.get('/all', verifyToken, requireRole(['SUPER_ADMIN']), async (req, res) => {
   try {
     const complaints = await prisma.complaint.findMany({
       include: {
         votes: true,
         department: true,
-        assignedTo: { select: { email: true, role: true } },
-        comments: { include: { user: { select: { email: true, role: true } } } },
+        user: { select: { email: true, role: true, name: true, rollNo: true } },
+        assignedTo: { select: { email: true, role: true, name: true, designation: true } },
+        comments: { include: { user: { select: { email: true, role: true, name: true } } } },
         activityLogs: { orderBy: { timestamp: 'desc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const scored = await Promise.all(complaints.map(transformComplaint));
+    const scored = await Promise.all(complaints.map(c => transformComplaint(c, req.user?.id, req.user?.role)));
 
     res.json(scored);
   } catch (err) {
@@ -237,7 +255,7 @@ router.get('/all', verifyToken, requireRole(['AUTHORITY']), async (req, res) => 
 // ──────────────────────────────────────────────
 // GET /complaints/audit-log — Full audit trail
 // ──────────────────────────────────────────────
-router.get('/audit-log', verifyToken, requireRole(['AUTHORITY']), async (req, res) => {
+router.get('/audit-log', verifyToken, requireRole(['SUPER_ADMIN']), async (req, res) => {
   try {
     const logs = await prisma.escalationLog.findMany({
       include: {
@@ -257,7 +275,7 @@ router.get('/audit-log', verifyToken, requireRole(['AUTHORITY']), async (req, re
 // POST /complaints — Submit a new complaint (with optional attachment)
 // ──────────────────────────────────────────────
 router.post('/', verifyToken, upload.single('attachment'), validateComplaint, async (req, res) => {
-  const { title, description, category, severity, visibility } = req.body;
+  const { title, description, category, severity, visibility, isAnonymous } = req.body;
   const attachmentUrl = req.file ? req.file.location : null;
 
   try {
@@ -275,7 +293,7 @@ router.post('/', verifyToken, upload.single('attachment'), validateComplaint, as
     const assignedDeptId = visibility === 'PERSONAL' ? null : dept.id;
 
     // ── Hierarchy Chain Resolution ──
-    const { chain, firstAuthority } = await buildChainForTicket(category);
+    const { chain, firstAuthority } = await buildChainForTicket(category, assignedDeptId);
 
     const complaint = await prisma.complaint.create({
       data: {
@@ -288,6 +306,7 @@ router.post('/', verifyToken, upload.single('attachment'), validateComplaint, as
         status: firstAuthority ? 'ASSIGNED' : 'CREATED',
         ipfsHash: mockIpfsHash,
         attachmentUrl,
+        isAnonymous: isAnonymous === 'true' || isAnonymous === true,
         userId: req.user.id,
         departmentId: assignedDeptId,
         slaDeadline: calculateSlaDeadline(severity),
@@ -414,20 +433,7 @@ router.get('/:id', verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    let up = 0; let down = 0;
-    complaint.votes.forEach(v => v.type === 'UP' ? up++ : down++);
-    const weight = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 5 }[complaint.severity] || 1;
-
-    const signedUrl = await getSignedAttachmentUrl(complaint.attachmentUrl);
-
-    res.json({ 
-      ...complaint, 
-      impactScore: (up - down) * weight, 
-      upvotes: up, 
-      downvotes: down, 
-      attachmentUrl: signedUrl,
-      votes: undefined 
-    });
+    res.json(await transformComplaint(complaint, req.user?.id, req.user?.role));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -493,12 +499,27 @@ router.put('/:id/status', verifyToken, upload.single('proof'), async (req, res) 
         return res.status(403).json({ error: "Students can only confirm resolution or reopen." });
       }
     } else if (userRole === 'ADMIN') {
-      if (complaint.assignedToId !== userId && status !== 'ASSIGNED') {
-         return res.status(403).json({ error: "You must claim this ticket first." });
+      // Admins must belong to the same department as the ticket
+      if (complaint.departmentId !== req.user.departmentId) {
+        return res.status(403).json({ error: "This grievance does not belong to your department." });
       }
+      
+      // Strict Enforcement: Only the assigned admin can update the status
+      // If unassigned, they can take it over. If assigned to someone else, they are blocked.
+      if (complaint.assignedToId && complaint.assignedToId !== userId) {
+        return res.status(403).json({ error: "This ticket is assigned to another authority. Only the assignee can resolve it." });
+      }
+    } else if (userRole !== 'SUPER_ADMIN') {
+      // Non-students/non-admins/non-superadmins are blocked
+      return res.status(403).json({ error: "Access denied" });
     }
 
     const data = { status };
+
+    // Auto-assign to resolver if unassigned
+    if (!complaint.assignedToId && (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN')) {
+      data.assignedToId = userId;
+    }
     
     // Handle file upload
     if (req.file) {
@@ -566,7 +587,7 @@ router.put('/:id/status', verifyToken, upload.single('proof'), async (req, res) 
 });
 
 // POST /complaints/:id/assign — Assign ticket
-router.post('/:id/assign', verifyToken, requireRole(['ADMIN', 'AUTHORITY']), async (req, res) => {
+router.post('/:id/assign', verifyToken, requireRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   const { userId: assignToId } = req.body || {};
   const complaintId = req.params.id;
 
@@ -668,7 +689,7 @@ router.post('/:id/comment', verifyToken, upload.single('attachment'), async (req
 // ──────────────────────────────────────────────
 // POST /complaints/:id/escalate — Manual escalation (Array-Index approach)
 // ──────────────────────────────────────────────
-router.post('/:id/escalate', verifyToken, requireRole(['ADMIN', 'AUTHORITY']), async (req, res) => {
+router.post('/:id/escalate', verifyToken, requireRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   const complaintId = req.params.id;
 
   try {
@@ -754,5 +775,45 @@ router.post('/:id/escalate', verifyToken, requireRole(['ADMIN', 'AUTHORITY']), a
 });
 
 
+
+// DELETE /complaints/:id — Delete grievance (Owner or Super Admin)
+router.delete('/:id', verifyToken, async (req, res) => {
+  const complaintId = req.params.id;
+  const { id: userId, role: userRole } = req.user;
+  console.log(`[DELETE] Request for ${complaintId} by ${userId} (${userRole})`);
+
+  try {
+    const complaint = await prisma.complaint.findUnique({ where: { id: complaintId } });
+    if (!complaint) return res.status(404).json({ error: "Ticket not found" });
+
+    // Authorization: ONLY the student owner can delete their own ticket
+    if (complaint.userId !== userId) {
+      return res.status(403).json({ error: "Only the student who created this ticket can delete it." });
+    }
+
+    // Optional: Prevent deletion if already being handled/resolved?
+    // if (userRole === 'STUDENT' && !['CREATED', 'ASSIGNED'].includes(complaint.status)) {
+    //   return res.status(400).json({ error: "Cannot delete a ticket that is already in progress or resolved" });
+    // }
+
+    // Use transaction to ensure full cleanup
+    await prisma.$transaction([
+      prisma.vote.deleteMany({ where: { complaintId } }),
+      prisma.comment.deleteMany({ where: { complaintId } }),
+      prisma.activityLog.deleteMany({ where: { complaintId } }),
+      prisma.escalationLog.deleteMany({ where: { complaintId } }),
+      prisma.feedback.deleteMany({ where: { complaintId } }),
+      prisma.complaint.delete({ where: { id: complaintId } })
+    ]);
+
+    // Notify via Socket
+    getIo().emit('ticket-deleted', { ticketId: complaintId });
+
+    res.json({ message: "Ticket deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 export default router;

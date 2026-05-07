@@ -32,6 +32,7 @@ export default function AssignModal({ isOpen, onClose, onAssign, currentAssignee
 
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (u.designation && u.designation.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -87,7 +88,7 @@ export default function AssignModal({ isOpen, onClose, onAssign, currentAssignee
                         <User size={16} color="var(--text-muted)" />
                       </div>
                       <div style={{ textAlign: 'left', flex: 1 }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{u.email}</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{u.name || u.email}</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <ShieldCheck size={12} /> {u.designation || u.role}
                         </div>

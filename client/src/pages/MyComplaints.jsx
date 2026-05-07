@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import ComplaintCard from '../components/ComplaintCard';
 import EmptyState from '../components/EmptyState';
@@ -12,6 +13,8 @@ import { useSocket } from '../hooks/useSocket';
 export default function MyComplaints() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q')?.toLowerCase() || '';
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -28,10 +31,16 @@ export default function MyComplaints() {
     // Refresh list when notifications arrive or status updates
     socket.on(`notification-${user.id}`, () => fetchMy());
     socket.on('ticket-updated', () => fetchMy());
+    socket.on('ticket-deleted', () => fetchMy());
+
+    const handleRefresh = () => fetchMy();
+    window.addEventListener('ticket-refresh', handleRefresh);
 
     return () => {
       socket.off(`notification-${user.id}`);
       socket.off('ticket-updated');
+      socket.off('ticket-deleted');
+      window.removeEventListener('ticket-refresh', handleRefresh);
     };
   }, [socket, user]);
 
@@ -78,8 +87,17 @@ export default function MyComplaints() {
     if (filter === 'pending') list = list.filter(c => !['RESOLVED', 'CLOSED'].includes(c.status));
     if (filter === 'resolved_pending') list = list.filter(c => c.status === 'RESOLVED');
     if (filter === 'archive') list = list.filter(c => c.status === 'CLOSED');
+
+    if (query) {
+      list = list.filter(c => 
+        c.title.toLowerCase().includes(query) || 
+        c.category.toLowerCase().includes(query) ||
+        c.description.toLowerCase().includes(query)
+      );
+    }
+
     return list;
-  }, [complaints, filter]);
+  }, [complaints, filter, query]);
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>

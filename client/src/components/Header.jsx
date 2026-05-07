@@ -8,7 +8,7 @@ import { API_URL } from '../lib/api';
 
 import { useToast } from '../context/ToastContext';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function Header({ isOpen, onToggle }) {
   const { user } = useAuth();
@@ -21,6 +21,26 @@ export default function Header({ isOpen, onToggle }) {
   const dropdownRef = useRef(null);
   
   const socket = useSocket(); // Global socket for notifications
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchValue, setSearchValue] = useState(searchParams.get('q') || '');
+
+  // Keep input in sync with URL (back button, manual edits)
+  useEffect(() => {
+    setSearchValue(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  const handleSearch = (e) => {
+    const val = e.target.value;
+    setSearchValue(val);
+    
+    // Update URL param
+    if (val) {
+      setSearchParams({ q: val });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   useEffect(() => {
     fetchNotifications();
@@ -102,7 +122,13 @@ export default function Header({ isOpen, onToggle }) {
 
       <div className="search-bar" style={{ width: '400px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', height: '44px', borderRadius: '8px', padding: '0 16px' }}>
         <Search size={18} color="var(--text-muted)" />
-        <input type="text" placeholder="Search" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.9rem' }} />
+        <input 
+          type="text" 
+          placeholder="Search by title or category..." 
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.9rem', width: '100%', outline: 'none' }}
+          value={searchValue}
+          onChange={handleSearch}
+        />
       </div>
 
       <div className="header-actions" style={{ gap: '32px' }}>
@@ -180,7 +206,7 @@ export default function Header({ isOpen, onToggle }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {user?.email?.split('@')[0] || 'User Name'}
+              {user?.name || user?.email?.split('@')[0] || 'User Name'}
             </span>
             <ChevronDown size={14} color="var(--text-muted)" />
           </div>

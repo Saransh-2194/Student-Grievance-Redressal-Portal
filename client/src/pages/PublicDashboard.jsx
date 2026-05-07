@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ComplaintCard from '../components/ComplaintCard';
@@ -7,16 +8,36 @@ import EmptyState from '../components/EmptyState';
 import { TrendingUp, AlertTriangle, CheckCircle, Clock, BarChart3 } from 'lucide-react';
 
 import { API_URL } from '../lib/api';
+import { useSocket } from '../hooks/useSocket';
 
 export default function PublicDashboard() {
   const { user } = useAuth();
+  const socket = useSocket();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q')?.toLowerCase() || '';
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, trending, escalated
 
   useEffect(() => {
     fetchComplaints();
-  }, []);
+    
+    if (socket) {
+      socket.on('ticket-updated', () => fetchComplaints());
+      socket.on('ticket-deleted', () => fetchComplaints());
+    }
+
+    const handleRefresh = () => fetchComplaints();
+    window.addEventListener('ticket-refresh', handleRefresh);
+
+    return () => {
+      if (socket) {
+        socket.off('ticket-updated');
+        socket.off('ticket-deleted');
+      }
+      window.removeEventListener('ticket-refresh', handleRefresh);
+    };
+  }, [socket]);
 
   const fetchComplaints = async () => {
     setLoading(true);
@@ -55,6 +76,14 @@ export default function PublicDashboard() {
   }
   if (filter === 'pending') filtered = filtered.filter(c => !['RESOLVED', 'CLOSED'].includes(c.status));
   if (filter === 'resolved') filtered = filtered.filter(c => ['RESOLVED', 'CLOSED'].includes(c.status));
+
+  if (query) {
+    filtered = filtered.filter(c => 
+      c.title.toLowerCase().includes(query) || 
+      c.category.toLowerCase().includes(query) ||
+      c.description.toLowerCase().includes(query)
+    );
+  }
 
   const stats = [
     { value: total, label: 'Total Complaints', icon: <BarChart3 size={22} color="var(--accent-blue)" />, bg: 'rgba(59,130,246,0.12)', color: 'var(--accent-blue)' },

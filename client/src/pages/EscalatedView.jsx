@@ -72,7 +72,7 @@ export default function EscalatedView() {
               complaint={c}
               showActions
               onStatusChange={handleStatusChange}
-              userRole="AUTHORITY"
+              userRole="SUPER_ADMIN"
             />
           ))}
         </div>

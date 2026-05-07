@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import ComplaintCard from '../components/ComplaintCard';
 import EmptyState from '../components/EmptyState';
@@ -15,6 +16,8 @@ import { useToast } from '../context/ToastContext';
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q')?.toLowerCase() || '';
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('my_queue'); // 'my_queue' | 'unassigned' | 'escalated' | 'archive'
@@ -43,9 +46,16 @@ export default function AdminDashboard() {
       fetchDept();
     });
 
+    socket.on('ticket-deleted', () => fetchDept());
+
+    const handleRefresh = () => fetchDept();
+    window.addEventListener('ticket-refresh', handleRefresh);
+
     return () => {
       socket.off('new-ticket');
       socket.off('ticket-updated');
+      socket.off('ticket-deleted');
+      window.removeEventListener('ticket-refresh', handleRefresh);
     };
   }, [socket, user?.departmentId, addToast]);
 
@@ -93,7 +103,16 @@ export default function AdminDashboard() {
     // 2. Severity Filter
     if (severityFilter !== 'all') list = list.filter(c => c.severity === severityFilter);
 
-    // 3. Sorting
+    // 3. Search Filter
+    if (query) {
+      list = list.filter(c => 
+        c.title.toLowerCase().includes(query) || 
+        c.category.toLowerCase().includes(query) ||
+        c.description.toLowerCase().includes(query)
+      );
+    }
+
+    // 4. Sorting
     list.sort((a, b) => {
       if (sortBy === 'sla') {
         return new Date(a.slaDeadline || 0) - new Date(b.slaDeadline || 0);
@@ -105,7 +124,7 @@ export default function AdminDashboard() {
     });
 
     return list;
-  }, [complaints, view, severityFilter, sortBy]);
+  }, [complaints, view, severityFilter, sortBy, query]);
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -249,6 +268,7 @@ export default function AdminDashboard() {
               complaint={c}
               showActions
               userRole="ADMIN"
+              onUpdate={fetchDept}
             />
           ))}
         </div>

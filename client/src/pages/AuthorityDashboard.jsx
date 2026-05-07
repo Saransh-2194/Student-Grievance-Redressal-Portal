@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import ComplaintCard from '../components/ComplaintCard';
 import EmptyState from '../components/EmptyState';
@@ -17,6 +18,8 @@ export default function AuthorityDashboard() {
   const [filter, setFilter] = useState('my_queue'); // 'my_queue' | 'all' | 'personal' | 'escalated' | 'breached'
   const [selectedDept, setSelectedDept] = useState('all');
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q')?.toLowerCase() || '';
   const socket = useSocket();
 
   useEffect(() => {
@@ -95,6 +98,14 @@ export default function AuthorityDashboard() {
   if (filter === 'escalated') filtered = filtered.filter(c => c.status === 'ESCALATED');
   if (filter === 'breached') filtered = filtered.filter(c => c.slaBreached);
   if (selectedDept !== 'all') filtered = filtered.filter(c => c.department?.name === selectedDept);
+
+  if (query) {
+    filtered = filtered.filter(c => 
+      c.title.toLowerCase().includes(query) || 
+      c.category.toLowerCase().includes(query) ||
+      c.description.toLowerCase().includes(query)
+    );
+  }
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -211,7 +222,8 @@ export default function AuthorityDashboard() {
               complaint={c}
               showActions
               onStatusChange={handleStatusChange}
-              userRole="AUTHORITY"
+              userRole="SUPER_ADMIN"
+              onUpdate={fetchAll}
             />
           ))}
         </div>

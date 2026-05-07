@@ -22,7 +22,7 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   const toggleMenu = (menu) => {
-    setOpenMenus(prev => 
+    setOpenMenus(prev =>
       prev.includes(menu) ? prev.filter(m => m !== menu) : [...prev, menu]
     );
   };
@@ -44,37 +44,37 @@ export default function Sidebar({ isOpen, onClose }) {
             background: 'var(--accent-blue)', display: 'flex',
             alignItems: 'center', justifyContent: 'center'
           }}>
-            <MessageSquare size={22} color="white" fill="white" />
+            <Shield size={22} color="white" fill="rgba(255,255,255,0.2)" />
           </div>
-          <span style={{ 
-            fontSize: '1.5rem', 
-            fontWeight: 800, 
-            letterSpacing: '0.02em', 
+          <span style={{
+            fontSize: '1.5rem',
+            fontWeight: 800,
+            letterSpacing: '0.02em',
             color: 'var(--text-primary)',
             display: 'flex',
             alignItems: 'center'
           }}>
-            COMPLAINT
+            Grievance Portal
           </span>
         </div>
       </div>
 
       {/* Navigation Menu */}
       <nav style={{ padding: '0 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        
-        <button 
-          className={`nav-item ${path === '/dashboard' ? 'active' : ''}`} 
+
+        <button
+          className={`nav-item ${path === '/dashboard' ? 'active' : ''}`}
           onClick={() => nav('/dashboard')}
           style={{ height: '48px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left' }}
         >
           <LayoutDashboard size={18} /> Dashboard
         </button>
 
-        {/* Users Section (Authority only) */}
-        {(user?.role === 'AUTHORITY' || user?.role === 'ADMIN') && (
+        {/* Users Section (Super Admin only) */}
+        {user?.role === 'SUPER_ADMIN' && (
           <div style={{ marginTop: '12px' }}>
-            <button 
-              className={`nav-item ${path.includes('/users') ? 'active' : ''}`} 
+            <button
+              className={`nav-item ${path.includes('/users') ? 'active' : ''}`}
               onClick={() => toggleMenu('users')}
               style={{ height: '48px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
             >
@@ -95,38 +95,38 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {/* Complaints Section */}
         <div style={{ marginTop: '12px' }}>
-          <button 
-            className={`nav-item ${path.includes('/complaint') || path.includes('/submit') || path.includes('/my') || path.includes('/admin') || path.includes('/authority') ? 'active' : ''}`} 
+          <button
+            className={`nav-item ${path.includes('/complaint') || path.includes('/submit') || path.includes('/my') || path.includes('/admin') || path.includes('/authority') ? 'active' : ''}`}
             onClick={() => toggleMenu('complaints')}
             style={{ height: '48px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FileText size={18} /> Complaints
+              <FileText size={18} /> Grievances
             </div>
             <ChevronDown size={14} style={{ transform: openMenus.includes('complaints') ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
           </button>
-          
+
           {openMenus.includes('complaints') && (
             <div style={{ paddingLeft: '42px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {user?.role === 'STUDENT' && (
                 <>
                   <button className="btn-text" onClick={() => nav('/dashboard/submit')} style={{ justifyContent: 'flex-start', fontSize: '0.85rem', padding: '8px 0', opacity: path === '/dashboard/submit' ? 1 : 0.6, fontWeight: path === '/dashboard/submit' ? 700 : 400 }}>
-                    New Complaint
+                    New Grievance
                   </button>
                   <button className="btn-text" onClick={() => nav('/dashboard/my')} style={{ justifyContent: 'flex-start', fontSize: '0.85rem', padding: '8px 0', opacity: path === '/dashboard/my' ? 1 : 0.6, fontWeight: path === '/dashboard/my' ? 700 : 400 }}>
-                    My Complaints
+                    My Grievances
                   </button>
                 </>
               )}
               {user?.role === 'ADMIN' && (
                 <button className="btn-text" onClick={() => nav('/dashboard/admin')} style={{ justifyContent: 'flex-start', fontSize: '0.85rem', padding: '8px 0', opacity: path === '/dashboard/admin' ? 1 : 0.6, fontWeight: path === '/dashboard/admin' ? 700 : 400 }}>
-                  Department List
+                  Dept. Dashboard
                 </button>
               )}
-              {user?.role === 'AUTHORITY' && (
+              {user?.role === 'SUPER_ADMIN' && (
                 <>
                   <button className="btn-text" onClick={() => nav('/dashboard/authority')} style={{ justifyContent: 'flex-start', fontSize: '0.85rem', padding: '8px 0', opacity: path === '/dashboard/authority' ? 1 : 0.6, fontWeight: path === '/dashboard/authority' ? 700 : 400 }}>
-                    All Complaints
+                    Global Overview
                   </button>
                   <button className="btn-text" onClick={() => nav('/dashboard/escalated')} style={{ justifyContent: 'flex-start', fontSize: '0.85rem', padding: '8px 0', opacity: path === '/dashboard/escalated' ? 1 : 0.6, fontWeight: path === '/dashboard/escalated' ? 700 : 400 }}>
                     Escalated List
@@ -151,9 +151,17 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
             <ChevronDown size={14} />
           </button>
-          
+
+          <button 
+            className="nav-item" 
+            onClick={handleLogout} 
+            style={{ height: '48px', padding: '0 16px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--danger)', marginTop: '8px' }}
+          >
+            <LogOut size={18} /> Sign Out
+          </button>
+
           <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', padding: '16px 16px 0' }}>
-            © Complaint 2023, All Rights Reserved.
+            © Grievance Portal 2026, All Rights Reserved.
           </p>
         </div>
       </nav>

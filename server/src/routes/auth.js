@@ -18,7 +18,7 @@ const ensureDepartment = async (name) => {
 };
 
 router.post('/register', validateRegister, async (req, res) => {
-  const { email, password, role, departmentName } = req.body;
+  const { email, password, role, departmentName, name, rollNo, authorityId, designation } = req.body;
   
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -37,7 +37,11 @@ router.post('/register', validateRegister, async (req, res) => {
         email,
         passwordHash,
         role: role || 'STUDENT',
-        departmentId: deptId
+        departmentId: deptId,
+        name,
+        rollNo,
+        authorityId,
+        designation
       }
     });
 
@@ -64,7 +68,16 @@ router.post('/login', validateLogin, async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    const userData = { id: user.id, email: user.email, role: user.role, departmentId: user.departmentId };
+    const userData = { 
+      id: user.id, 
+      email: user.email, 
+      role: user.role, 
+      departmentId: user.departmentId,
+      name: user.name,
+      rollNo: user.rollNo,
+      authorityId: user.authorityId,
+      designation: user.designation
+    };
     if (user.departmentId) {
       const dept = await prisma.department.findUnique({ where: { id: user.departmentId } });
       userData.department = dept;
@@ -80,7 +93,7 @@ router.get('/staff', verifyToken, async (req, res) => {
   try {
     const staff = await prisma.user.findMany({
       where: {
-        role: { in: ['ADMIN', 'AUTHORITY'] }
+        role: { in: ['ADMIN', 'SUPER_ADMIN'] }
       },
       select: {
         id: true,

@@ -9,13 +9,13 @@ import prisma from './db.js';
  */
 
 export const HIERARCHY_CHAINS = {
-  'Hostel':                ['Caretaker', 'Warden', 'Chief Warden', 'Vice Chancellor'],
-  'Housekeeping':          ['Caretaker', 'Warden', 'Chief Warden', 'Vice Chancellor'],
+  'Hostel':                ['Warden', 'Chief Warden', 'Vice Chancellor'],
+  'Housekeeping':          ['Caretaker', 'Chief Warden', 'Vice Chancellor'],
   'Mess & Canteen':        ['Mess Incharge', 'Registrar', 'Vice Chancellor'],
-  'General Issues':        ['Caretaker', 'Registrar', 'Vice Chancellor'],
-  'Personal':              ['Student Counselor', 'Dean of Student Affairs', 'Vice Chancellor'],
-  'Medical':               ['Medical Officer', 'Chief Medical Officer', 'Vice Chancellor'],
-  'Academics':             ['Dean of Academics', 'Registrar', 'Vice Chancellor'],
+  'General Issues':        ['Registrar', 'Vice Chancellor'],
+  'Personal':              ['Dean of Student Affairs', 'Vice Chancellor'],
+  'Medical':               ['Chief Medical Officer', 'Vice Chancellor'],
+  'Academics':             ['HOD', 'Dean of Academics', 'Vice Chancellor'],
   'Student Affairs':       ['Dean of Student Affairs', 'Registrar', 'Vice Chancellor'],
 };
 
@@ -32,20 +32,31 @@ export const getChainForCategory = (category) => {
  * Returns an array of user IDs in escalation order.
  * If a designation has no matching user, that slot is skipped.
  */
-export const resolveChainToUserIds = async (designationChain) => {
+export const resolveChainToUserIds = async (designationChain, departmentId = null) => {
   const userIds = [];
 
   for (const designation of designationChain) {
-    const user = await prisma.user.findFirst({
-      where: { designation },
-      select: { id: true }
-    });
+    // Try to find a user with this designation in the specific department first
+    let user = null;
+    if (departmentId) {
+      user = await prisma.user.findFirst({
+        where: { designation, departmentId },
+        select: { id: true }
+      });
+    }
+
+    // Fallback: Find anyone with this designation (e.g. VC or global roles)
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { designation },
+        select: { id: true }
+      });
+    }
     
     if (user) {
       userIds.push(user.id);
     } else {
       console.warn(`[Hierarchy] No user found for designation: ${designation}`);
-      // Push null as placeholder — escalation will skip this level
       userIds.push(null);
     }
   }
@@ -57,9 +68,9 @@ export const resolveChainToUserIds = async (designationChain) => {
  * Build and resolve the full chain for a ticket's category.
  * Returns { chain: string[], firstAuthority: string | null }
  */
-export const buildChainForTicket = async (category) => {
+export const buildChainForTicket = async (category, departmentId = null) => {
   const designations = getChainForCategory(category);
-  const userIds = await resolveChainToUserIds(designations);
+  const userIds = await resolveChainToUserIds(designations, departmentId);
   
   // Filter out null entries for a clean chain
   const cleanChain = userIds.filter(id => id !== null);

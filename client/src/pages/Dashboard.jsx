@@ -46,8 +46,8 @@ export default function Dashboard() {
               <Route path="admin" element={<AdminDashboard />} />
             )}
 
-            {/* Authority routes */}
-            {user?.role === 'AUTHORITY' && (
+            {/* Super Admin routes */}
+            {user?.role === 'SUPER_ADMIN' && (
               <>
                 <Route path="authority" element={<AuthorityDashboard />} />
                 <Route path="escalated" element={<EscalatedView />} />

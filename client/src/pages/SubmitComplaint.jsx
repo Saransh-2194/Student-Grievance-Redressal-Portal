@@ -23,7 +23,8 @@ export default function SubmitComplaint() {
     description: '',
     category: 'General Issues',
     severity: 'MEDIUM',
-    visibility: 'PUBLIC'
+    visibility: 'PUBLIC',
+    isAnonymous: false
   });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -69,7 +70,7 @@ export default function SubmitComplaint() {
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
             <button className="btn btn-secondary" style={{ padding: '12px 24px' }} onClick={() => navigate('/dashboard/my')}>
-              My Complaints
+              My Grievances
             </button>
             <button className="btn btn-primary" style={{ padding: '12px 24px' }} onClick={() => { setSubmitted(false); setFormData({ title: '', description: '', category: 'General Issues', severity: 'MEDIUM', visibility: 'PUBLIC' }); setFile(null); }}>
               File Another
@@ -192,6 +193,26 @@ export default function SubmitComplaint() {
                   </div>
                 </button>
               </div>
+            </div>
+
+            <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <div style={{ position: 'relative', width: '40px', height: '20px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={formData.isAnonymous} 
+                    onChange={(e) => update('isAnonymous', e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }} 
+                  />
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: formData.isAnonymous ? 'var(--success)' : '#ccc', borderRadius: '20px', transition: '0.3s' }}>
+                    <div style={{ position: 'absolute', left: formData.isAnonymous ? '22px' : '2px', top: '2px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', transition: '0.3s' }} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>File Anonymously</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Your identity will be hidden from public</div>
+                </div>
+              </label>
             </div>
           </div>
 
